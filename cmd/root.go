@@ -78,4 +78,6 @@ func init() {
 	rootCmd.PersistentFlags().Int64Var(&chrm.Timeout, "timeout", 10, "preflight check timeout")
 	rootCmd.PersistentFlags().StringVarP(&chrm.ChromePath, "chrome-path", "", "", "path to chrome executable to use")
 	rootCmd.PersistentFlags().StringVarP(&chrm.Proxy, "proxy", "p", "", "http/socks5 proxy to use. Use format proto://address:port")
+	rootCmd.PersistentFlags().StringVarP(&options.AccessKey, "access-key", "", "", "access key")
+	rootCmd.PersistentFlags().StringVarP(&options.Secret, "secret", "", "", "secret")
 }

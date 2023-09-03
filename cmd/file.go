@@ -66,6 +66,8 @@ $ gowitness file -f <( shuf domains ) --no-http`,
 						Chrome:         chrm,
 						URL:            url,
 						ScreenshotPath: options.ScreenshotPath,
+						Secret:         options.Secret,
+						AccessKey:      options.AccessKey,
 					}
 
 					if err := p.Gowitness(); err != nil {

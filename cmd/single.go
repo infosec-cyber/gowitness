@@ -52,6 +52,8 @@ $ gowitness single --destination ~/screenshots -o twitter.png https://twitter.co
 			URL:                url,
 			ScreenshotPath:     options.ScreenshotPath,
 			ScreenshotFileName: options.ScreenshotFileName,
+			Secret:             options.Secret,
+			AccessKey:          options.AccessKey,
 		}
 
 		if err := p.Gowitness(); err != nil {

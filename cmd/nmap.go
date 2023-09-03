@@ -98,6 +98,8 @@ $ gowitness nmap --file nmap.xml -s -n http`,
 					Chrome:         chrm,
 					URL:            url,
 					ScreenshotPath: options.ScreenshotPath,
+					Secret:         options.Secret,
+					AccessKey:      options.AccessKey,
 				}
 
 				if err := p.Gowitness(); err != nil {

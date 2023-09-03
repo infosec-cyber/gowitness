@@ -43,6 +43,8 @@ type Processor struct {
 	// screenshot
 	screenshotResult *chrome.ScreenshotResult
 
+	AccessKey string
+	Secret    string
 	// persistence id
 	urlid uint
 }
@@ -209,8 +211,8 @@ func (p *Processor) storePerceptionHash() (err error) {
 func (p *Processor) writeScreenshot() (err error) {
 
 	if p.Db.Name() == "S3" {
-		key := os.Getenv("SPACES_KEY")
-		secret := os.Getenv("SPACES_SECRET")
+		key := getEnv("SPACES_KEY", p.AccessKey)
+		secret := getEnv("SPACES_SECRET", p.Secret)
 
 		s3Config := &aws.Config{
 			Credentials:         credentials.NewStaticCredentials(key, secret, ""),

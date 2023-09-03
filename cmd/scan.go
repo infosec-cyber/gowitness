@@ -103,6 +103,8 @@ $ gowitness --log-level debug scan --threads 20 --ports 80,443,8080 --no-http --
 					Chrome:         chrm,
 					URL:            url,
 					ScreenshotPath: options.ScreenshotPath,
+					Secret:         options.Secret,
+					AccessKey:      options.AccessKey,
 				}
 
 				if err := p.Gowitness(); err != nil {

@@ -700,6 +700,8 @@ func apiScreenshotHandler(c *gin.Context) {
 			Chrome:         chrm,
 			URL:            u,
 			ScreenshotPath: options.ScreenshotPath,
+			Secret:         options.Secret,
+			AccessKey:      options.AccessKey,
 		}
 
 		p.Gowitness()

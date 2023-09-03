@@ -106,6 +106,8 @@ $ gowitness nessus --file output.nessus --port 80 --port 8080`,
 					Chrome:         chrm,
 					URL:            url,
 					ScreenshotPath: options.ScreenshotPath,
+					Secret:         options.Secret,
+					AccessKey:      options.AccessKey,
 				}
 
 				if err := p.Gowitness(); err != nil {

@@ -64,6 +64,8 @@ type Options struct {
 	MergeDBs        []string
 	MergeSourcePath string
 	MergeOutputDB   string
+	AccessKey       string
+	Secret          string
 }
 
 // NewOptions returns a new options struct
