@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
+	"github.com/chromedp/cdproto/fetch"
 	jsoniter "github.com/json-iterator/go"
 	"io"
 	"net/http"
@@ -47,9 +48,11 @@ type Chrome struct {
 	ScreenshotDbStore bool
 
 	// wappalyzer client
-	wappalyzer   *Wappalyzer
-	JsonDumpPath string
-	JsonDom      bool
+	wappalyzer    *Wappalyzer
+	JsonDumpPath  string
+	JsonDom       bool
+	ProxyUsername string
+	ProxyPassword string
 }
 
 type ConsoleLog struct {
@@ -100,7 +103,7 @@ func NewChrome() *Chrome {
 }
 
 // Preflight will preflight a url
-func (chrome *Chrome) Preflight(url *url.URL) (result *PreflightResult, err error) {
+func (chrome *Chrome) Preflight(inputUrl *url.URL) (result *PreflightResult, err error) {
 
 	// init a new preflight result
 	result = &PreflightResult{}
@@ -113,9 +116,13 @@ func (chrome *Chrome) Preflight(url *url.URL) (result *PreflightResult, err erro
 
 	if chrome.Proxy != "" {
 		var erri error
-		proxyURL, erri := url.Parse(chrome.Proxy)
+		proxyURL, erri := inputUrl.Parse(chrome.Proxy)
 		if erri != nil {
 			return
+		}
+
+		if chrome.ProxyUsername != "" && chrome.ProxyPassword != "" {
+			proxyURL.User = url.UserPassword(chrome.ProxyUsername, chrome.ProxyPassword)
 		}
 		transport.Proxy = http.ProxyURL(proxyURL)
 	}
@@ -125,7 +132,7 @@ func (chrome *Chrome) Preflight(url *url.URL) (result *PreflightResult, err erro
 		Transport: transport,
 	}
 
-	req, err := http.NewRequest("GET", url.String(), nil)
+	req, err := http.NewRequest("GET", inputUrl.String(), nil)
 	if err != nil {
 		return
 	}
@@ -153,7 +160,7 @@ func (chrome *Chrome) Preflight(url *url.URL) (result *PreflightResult, err erro
 		return
 	}
 
-	result.URL = url
+	result.URL = inputUrl
 	result.HTTPResponse = resp
 
 	// if we cant perform wappalyzer lookups, then return
@@ -305,6 +312,34 @@ func (chrome *Chrome) Screenshot(url *url.URL) (result *ScreenshotResult, err er
 	browserCtx, cancelBrowserCtx := chromedp.NewContext(actx)
 	defer cancelBrowserCtx()
 
+	lctx, lcancel := context.WithCancel(browserCtx)
+	chromedp.ListenTarget(lctx, func(ev interface{}) {
+		switch ev := ev.(type) {
+		case *fetch.EventRequestPaused:
+			go func() {
+				_ = chromedp.Run(browserCtx, fetch.ContinueRequest(ev.RequestID))
+			}()
+		case *fetch.EventAuthRequired:
+			if ev.AuthChallenge.Source == fetch.AuthChallengeSourceProxy {
+				go func() {
+					_ = chromedp.Run(browserCtx,
+						fetch.ContinueWithAuth(ev.RequestID, &fetch.AuthChallengeResponse{
+							Response: fetch.AuthChallengeResponseResponseProvideCredentials,
+							Username: chrome.ProxyUsername,
+							Password: chrome.ProxyPassword,
+						}),
+						// Chrome will remember the credential for the current instance,
+						// so we can disable the fetch domain once credential is provided.
+						// Please file an issue if Chrome does not work in this way.
+						fetch.Disable(),
+					)
+					// and cancel the event handler too.
+					lcancel()
+				}()
+			}
+		}
+	})
+
 	// create the initial context to act as the 'tab', where we will perform the initial navigation
 	// if this context loads successfully, then the screenshot will have been captured
 	//
@@ -315,7 +350,7 @@ func (chrome *Chrome) Screenshot(url *url.URL) (result *ScreenshotResult, err er
 	defer cancelTabCtx()
 
 	// Run the initial browser
-	if err := chromedp.Run(browserCtx); err != nil {
+	if err := chromedp.Run(browserCtx, fetch.Enable().WithHandleAuthRequests(true)); err != nil {
 		return nil, err
 	}
 
@@ -332,6 +367,37 @@ func (chrome *Chrome) Screenshot(url *url.URL) (result *ScreenshotResult, err er
 		}
 	})
 
+	//chromedp.ListenTarget(tabCtx, func(ev interface{}) {
+	//	go func() {
+	//		switch ev := ev.(type) {
+	//		case *fetch.EventAuthRequired:
+	//			fmt.Printf("auth required: %s\n", ev.Request.URL)
+	//			//c := chromedp.FromContext(tabCtx)
+	//			//execCtx := cdp.WithExecutor(tabCtx, c.Target)
+	//			//
+	//			//fmt.Printf("auth required: %s\n", ev.Request.URL)
+	//			//resp := &fetch.AuthChallengeResponse{
+	//			//	Response: fetch.AuthChallengeResponseResponseProvideCredentials,
+	//			//	Username: chrome.ProxyUsername,
+	//			//	Password: chrome.ProxyPassword,
+	//			//}
+	//			//
+	//			//err := fetch.ContinueWithAuth(ev.RequestID, resp).Do(execCtx)
+	//			//if err != nil {
+	//			//	fmt.Printf("error authenticating: %s\n", err)
+	//			//}
+	//
+	//		case *fetch.EventRequestPaused:
+	//			fmt.Printf("request paused: %s\n", ev.Request.URL)
+	//			//c := chromedp.FromContext(tabCtx)
+	//			//execCtx := cdp.WithExecutor(tabCtx, c.Target)
+	//			//err := fetch.ContinueRequest(ev.RequestID).Do(execCtx)
+	//			//if err != nil {
+	//			//	fmt.Printf("error continuing request: %s\n", err)
+	//			//}
+	//		}
+	//	}()
+	//})
 	// squash JavaScript dialog boxes such as alert();
 	chromedp.ListenTarget(tabCtx, func(ev interface{}) {
 		if _, ok := ev.(*page.EventJavascriptDialogOpening); ok {
