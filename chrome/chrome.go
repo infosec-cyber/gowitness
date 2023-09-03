@@ -86,9 +86,10 @@ type ScreenshotResult struct {
 	DOM        string
 
 	// logging
-	ConsoleLog []ConsoleLog
-	NetworkLog []NetworkLog
-	Events     string
+	ConsoleLog    []ConsoleLog
+	NetworkLog    []NetworkLog
+	Events        string
+	ScreenshotUrl string
 }
 
 // NewChrome returns a new initialised Chrome struct
@@ -172,6 +173,7 @@ func (chrome *Chrome) StoreRequest(db *gorm.DB, preflight *PreflightResult, scre
 	record := &storage.URL{
 		URL:            preflight.URL.String(),
 		DOM:            screenshot.DOM,
+		ScreenshotUrl:  screenshot.ScreenshotUrl,
 		FinalURL:       preflight.HTTPResponse.Request.URL.String(),
 		ResponseCode:   preflight.HTTPResponse.StatusCode,
 		ResponseReason: preflight.HTTPResponse.Status,
@@ -230,7 +232,6 @@ func (chrome *Chrome) StoreRequest(db *gorm.DB, preflight *PreflightResult, scre
 
 	// add console logs
 	for _, log := range screenshot.ConsoleLog {
-		fmt.Printf("log: %s\n", log.Value)
 		record.Console = append(record.Console, storage.ConsoleLog{
 			Type:  log.Type,
 			Value: log.Value,
@@ -479,7 +480,6 @@ func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, domB
 		replaceAddEventListener := `
 
 (function() {
-	console.log("hooking addEventListener");
 	window.log_events = [];
     
    var oldAddEventListener = EventTarget.prototype.addEventListener;  
@@ -504,7 +504,6 @@ func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, domB
 			actions = append(actions, chromedp.Evaluate(chrome.JsCode, nil))
 		}
 
-		chromedp.Evaluate("console.log('gowitness')", nil)
 		if chrome.Delay > 0 {
 			actions = append(actions, chromedp.Sleep(time.Duration(chrome.Delay)*time.Second))
 		}
@@ -537,36 +536,7 @@ func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, domB
 		actions = append(actions, chromedp.CaptureScreenshot(buf))
 	}
 
-	actions = append(actions, chromedp.EvaluateAsDevTools("console.log('events' + JSON.stringify(window.log_events))", nil))
 	actions = append(actions, chromedp.EvaluateAsDevTools("JSON.stringify(window.log_events)", log_events))
-	//actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
-	//
-	//	doc, err := dom.GetDocument().Do(ctx)
-	//	if err != nil {
-	//		fmt.Printf("error getting document: %s\n", err)
-	//		return err
-	//	}
-	//
-	//	id := dom.QuerySelector(doc.NodeID, "body").NodeID
-	//
-	//	o, err := dom.ResolveNode().WithNodeID(id).Do(ctx)
-	//	if err != nil {
-	//		fmt.Printf("error resolving node: %s\n", err)
-	//		return err
-	//	}
-	//
-	//	listeners, err := domdebugger.GetEventListeners(o.ObjectID).WithDepth(-1).WithPierce(true).Do(ctx)
-	//	if err != nil {
-	//		fmt.Printf("error getting listeners: %s\n", err)
-	//		return err
-	//	}
-	//
-	//	for _, listener := range listeners {
-	//		fmt.Printf("listener: %s\n", listener.Type)
-	//	}
-	//
-	//	return nil
-	//}))
 
 	return actions
 }

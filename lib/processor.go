@@ -80,6 +80,11 @@ func (p *Processor) Gowitness() (err error) {
 		return
 	}
 
+	if err = p.writeScreenshot(); err != nil {
+		log.Error().Err(err).Msg("failed to save screenshot buffer")
+		return
+	}
+
 	if err = p.persistRequest(); err != nil {
 		log.Error().Err(err).Msg("failed to store request information")
 		return
@@ -87,11 +92,6 @@ func (p *Processor) Gowitness() (err error) {
 
 	if err = p.storePerceptionHash(); err != nil {
 		log.Error().Err(err).Msg("failed to calculate and save a perception hash")
-		return
-	}
-
-	if err = p.writeScreenshot(); err != nil {
-		log.Error().Err(err).Msg("failed to save screenshot buffer")
 		return
 	}
 
@@ -225,10 +225,12 @@ func (p *Processor) writeScreenshot() (err error) {
 		newSession := session.New(s3Config)
 		s3Client := s3.New(newSession)
 
-		url := p.URL.Host
+		url2 := p.URL.Host
 		protocol := p.URL.Scheme
 
-		s3Key := protocol + "/" + url + "/" + p.fn
+		s3Key := protocol + "/" + url2 + "/" + p.fn
+
+		p.screenshotResult.ScreenshotUrl = s3Key
 		object := s3.PutObjectInput{
 			Bucket:             aws.String(getEnv("SPACES_BUCKET", "bounty-screenshots")),
 			Key:                aws.String(s3Key),

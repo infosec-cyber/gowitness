@@ -35,11 +35,12 @@ type URL struct {
 
 	TLS TLS `json:"tls"`
 
-	Headers      []Header      `json:"headers"`
-	Technologies []Technologie `json:"technologies"`
-	Console      []ConsoleLog  `json:"console"`
-	Network      []NetworkLog  `json:"network"`
-	Events       []Event       `json:"events" gorm:"-"`
+	Headers       []Header      `json:"headers"`
+	Technologies  []Technologie `json:"technologies"`
+	Console       []ConsoleLog  `json:"console"`
+	Network       []NetworkLog  `json:"network"`
+	Events        []Event       `json:"events" gorm:"-"`
+	ScreenshotUrl string        `json:"screenshot_url" gorm:"-"`
 }
 
 // AddHeader adds a new header to a URL
