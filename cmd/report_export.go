@@ -9,7 +9,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/sensepost/gowitness/storage"
+	"github.com/infosec-cyber/gowitness/storage"
 	"github.com/spf13/cobra"
 )
 

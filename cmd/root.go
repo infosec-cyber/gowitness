@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/sensepost/gowitness/chrome"
-	"github.com/sensepost/gowitness/lib"
-	"github.com/sensepost/gowitness/storage"
+	"github.com/infosec-cyber/gowitness/chrome"
+	"github.com/infosec-cyber/gowitness/lib"
+	"github.com/infosec-cyber/gowitness/storage"
 	"github.com/spf13/cobra"
 
 	"github.com/rs/zerolog"

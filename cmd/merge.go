@@ -5,7 +5,7 @@ import (
 	"path/filepath"
 
 	"github.com/h2non/filetype"
-	"github.com/sensepost/gowitness/storage"
+	"github.com/infosec-cyber/gowitness/storage"
 	"github.com/spf13/cobra"
 	"gorm.io/gorm"
 	"gorm.io/gorm/clause"

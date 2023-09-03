@@ -8,8 +8,8 @@
 <h4 align="center">A golang, web screenshot utility using Chrome Headless.</h4>
 <p align="center">
   <a href="https://twitter.com/leonjza"><img src="https://img.shields.io/badge/twitter-%40leonjza-blue.svg" alt="@leonjza" height="18"></a>
-  <a href="https://goreportcard.com/report/github.com/sensepost/gowitness"><img src="https://goreportcard.com/badge/github.com/sensepost/gowitness" alt="Go Report Card" height="18"></a>
-  <a href="https://github.com/sensepost/gowitness/actions/workflows/docker.yml"><img alt="Docker build & Push" src="https://github.com/sensepost/gowitness/actions/workflows/docker.yml/badge.svg"></a>
+  <a href="https://goreportcard.com/report/github.com/infosec-cyber/gowitness"><img src="https://goreportcard.com/badge/github.com/infosec-cyber/gowitness" alt="Go Report Card" height="18"></a>
+  <a href="https://github.com/infosec-cyber/gowitness/actions/workflows/docker.yml"><img alt="Docker build & Push" src="https://github.com/infosec-cyber/gowitness/actions/workflows/docker.yml/badge.svg"></a>
 </p>
 <br>
 
@@ -21,7 +21,7 @@ Inspiration for `gowitness` comes from [Eyewitness](https://github.com/ChrisTrun
 
 ## documentation
 
-For installation information and other documentation, please refer to the wiki [here](https://github.com/sensepost/gowitness/wiki).
+For installation information and other documentation, please refer to the wiki [here](https://github.com/infosec-cyber/gowitness/wiki).
 
 ## screenshots
 

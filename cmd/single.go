@@ -3,7 +3,7 @@ package cmd
 import (
 	"net/url"
 
-	"github.com/sensepost/gowitness/lib"
+	"github.com/infosec-cyber/gowitness/lib"
 	"github.com/spf13/cobra"
 )
 

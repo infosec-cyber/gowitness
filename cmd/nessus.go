@@ -6,8 +6,8 @@ import (
 	"net/url"
 	"os"
 
+	"github.com/infosec-cyber/gowitness/lib"
 	"github.com/remeh/sizedwaitgroup"
-	"github.com/sensepost/gowitness/lib"
 	"github.com/spf13/cobra"
 )
 

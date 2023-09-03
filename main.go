@@ -3,7 +3,7 @@ package main
 import (
 	"embed"
 
-	"github.com/sensepost/gowitness/cmd"
+	"github.com/infosec-cyber/gowitness/cmd"
 )
 
 //go:embed web/assets/* web/ui-templates/* web/static-templates/*

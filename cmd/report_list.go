@@ -6,8 +6,8 @@ import (
 	"os"
 	"strconv"
 
+	"github.com/infosec-cyber/gowitness/storage"
 	"github.com/olekukonko/tablewriter"
-	"github.com/sensepost/gowitness/storage"
 	"github.com/spf13/cobra"
 )
 

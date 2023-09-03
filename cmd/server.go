@@ -11,8 +11,8 @@ import (
 	"strings"
 
 	"github.com/gin-gonic/gin"
-	"github.com/sensepost/gowitness/lib"
-	"github.com/sensepost/gowitness/storage"
+	"github.com/infosec-cyber/gowitness/lib"
+	"github.com/infosec-cyber/gowitness/storage"
 	"github.com/spf13/cobra"
 	"gorm.io/gorm"
 )

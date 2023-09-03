@@ -19,7 +19,7 @@ import (
 	"github.com/chromedp/cdproto/page"
 	"github.com/chromedp/cdproto/runtime"
 	"github.com/chromedp/chromedp"
-	"github.com/sensepost/gowitness/storage"
+	"github.com/infosec-cyber/gowitness/storage"
 	"gorm.io/gorm"
 )
 
