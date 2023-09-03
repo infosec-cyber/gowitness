@@ -2,17 +2,27 @@ package lib
 
 import (
 	"bytes"
-	"image/png"
-	"net/url"
-	"os"
-
+	"github.com/aws/aws-sdk-go/aws"
+	"github.com/aws/aws-sdk-go/aws/credentials"
+	"github.com/aws/aws-sdk-go/aws/session"
+	"github.com/aws/aws-sdk-go/service/s3"
 	"github.com/corona10/goimagehash"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 	"github.com/sensepost/gowitness/chrome"
 	"github.com/sensepost/gowitness/storage"
 	"gorm.io/gorm"
+	"image/png"
+	"net/url"
+	"os"
 )
+
+func getEnv(key, fallback string) string {
+	if value, ok := os.LookupEnv(key); ok {
+		return value
+	}
+	return fallback
+}
 
 // Processor is a URL processing helper
 type Processor struct {
@@ -198,6 +208,42 @@ func (p *Processor) storePerceptionHash() (err error) {
 // writeScreenshot writes the screenshot buffer to disk
 func (p *Processor) writeScreenshot() (err error) {
 
+	if p.Db.Name() == "S3" {
+		key := os.Getenv("SPACES_KEY")
+		secret := os.Getenv("SPACES_SECRET")
+
+		s3Config := &aws.Config{
+			Credentials:         credentials.NewStaticCredentials(key, secret, ""),
+			Endpoint:            aws.String(getEnv("SPACES_ENDPOINT", "https://sfo3.digitaloceanspaces.com")),
+			Region:              aws.String(getEnv("REGION", "us-east-1")),
+			LowerCaseHeaderMaps: aws.Bool(false),
+			S3ForcePathStyle:    aws.Bool(false), // // Configures to use subdomain/virtual calling format. Depending on your version, alternatively use o.UsePathStyle = false
+
+		}
+		newSession := session.New(s3Config)
+		s3Client := s3.New(newSession)
+
+		url := p.URL.Host
+		protocol := p.URL.Scheme
+
+		s3Key := protocol + "/" + url + "/" + p.fn
+		object := s3.PutObjectInput{
+			Bucket:             aws.String(getEnv("SPACES_BUCKET", "bounty-screenshots")),
+			Key:                aws.String(s3Key),
+			Body:               bytes.NewReader(p.screenshotResult.Screenshot),
+			ACL:                aws.String("public-read"),
+			ContentType:        aws.String("image/png"),
+			ContentDisposition: aws.String("inline"),
+			Metadata:           map[string]*string{},
+		}
+		_, err = s3Client.PutObject(&object)
+
+		if err != nil {
+			return err
+		}
+
+		return
+	}
 	p.Logger.Debug().Str("url", p.URL.String()).Str("path", p.fp).Msg("saving screenshot buffer")
 	if err = os.WriteFile(p.fp, p.screenshotResult.Screenshot, 0644); err != nil {
 		return

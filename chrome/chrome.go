@@ -5,9 +5,12 @@ import (
 	"crypto/tls"
 	"encoding/base64"
 	"errors"
+	"fmt"
+	jsoniter "github.com/json-iterator/go"
 	"io"
 	"net/http"
 	"net/url"
+	"os"
 	"strings"
 	"time"
 
@@ -44,7 +47,9 @@ type Chrome struct {
 	ScreenshotDbStore bool
 
 	// wappalyzer client
-	wappalyzer *Wappalyzer
+	wappalyzer   *Wappalyzer
+	JsonDumpPath string
+	JsonDom      bool
 }
 
 type ConsoleLog struct {
@@ -83,6 +88,7 @@ type ScreenshotResult struct {
 	// logging
 	ConsoleLog []ConsoleLog
 	NetworkLog []NetworkLog
+	Events     string
 }
 
 // NewChrome returns a new initialised Chrome struct
@@ -181,6 +187,14 @@ func (chrome *Chrome) StoreRequest(db *gorm.DB, preflight *PreflightResult, scre
 		record.Screenshot = base64.StdEncoding.EncodeToString(screenshot.Screenshot)
 	}
 
+	// Add Events
+	//"events": "[{\"type\":\"postMessageListener\",\"eventName\":\"message\",\"f\":\"function(c){return a.call(b.src,b.listener,c)}\"}]"
+
+	err := jsoniter.Unmarshal([]byte(screenshot.Events), &record.Events)
+	if err != nil {
+		fmt.Printf("error unmarshalling events: %s\n", err)
+	}
+
 	// append headers
 	for k, v := range preflight.HTTPResponse.Header {
 		hv := strings.Join(v, ", ")
@@ -216,6 +230,7 @@ func (chrome *Chrome) StoreRequest(db *gorm.DB, preflight *PreflightResult, scre
 
 	// add console logs
 	for _, log := range screenshot.ConsoleLog {
+		fmt.Printf("log: %s\n", log.Value)
 		record.Console = append(record.Console, storage.ConsoleLog{
 			Type:  log.Type,
 			Value: log.Value,
@@ -234,6 +249,25 @@ func (chrome *Chrome) StoreRequest(db *gorm.DB, preflight *PreflightResult, scre
 			IP:          log.IP,
 			Error:       log.Error,
 		})
+	}
+
+	if chrome.JsonDumpPath != "" {
+
+		if !chrome.JsonDom {
+			record.DOM = ""
+		}
+		marshal, err := jsoniter.Marshal(record)
+		if err != nil {
+			return 0, err
+		}
+
+		file, err := os.OpenFile(chrome.JsonDumpPath, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+		if err == nil {
+			defer file.Close()
+			file.WriteString(string(marshal) + "\n")
+		}
+
+		return record.ID, nil
 	}
 
 	db.Create(record)
@@ -340,6 +374,8 @@ func (chrome *Chrome) Screenshot(url *url.URL) (result *ScreenshotResult, err er
 
 	// log network events
 	chromedp.ListenTarget(tabCtx, func(ev interface{}) {
+		//fmt.Printf("Type: %T - Value
+
 		switch ev := ev.(type) {
 		// http
 		case *network.EventRequestWillBeSent:
@@ -390,7 +426,7 @@ func (chrome *Chrome) Screenshot(url *url.URL) (result *ScreenshotResult, err er
 	})
 
 	// perform navigation on the tab context and attempt to take a clean screenshot
-	err = chromedp.Run(tabCtx, buildTasks(chrome, url, true, &result.Screenshot, &result.DOM))
+	err = chromedp.Run(tabCtx, buildTasks(chrome, url, true, &result.Screenshot, &result.DOM, &result.Events))
 
 	if errors.Is(err, context.DeadlineExceeded) {
 		// if the context timeout exceeded (e.g. on a long page load) then
@@ -411,7 +447,7 @@ func (chrome *Chrome) Screenshot(url *url.URL) (result *ScreenshotResult, err er
 		})
 
 		// attempt to capture the screenshot of the tab and replace error accordingly
-		err = chromedp.Run(newTabCtx, buildTasks(chrome, url, false, &result.Screenshot, &result.DOM))
+		err = chromedp.Run(newTabCtx, buildTasks(chrome, url, false, &result.Screenshot, &result.DOM, &result.Events))
 	}
 
 	if err != nil {
@@ -430,7 +466,7 @@ func (chrome *Chrome) Screenshot(url *url.URL) (result *ScreenshotResult, err er
 }
 
 // buildTasks builds the chromedp tasks slice
-func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, dom *string) chromedp.Tasks {
+func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, domBody *string, log_events *string) chromedp.Tasks {
 	var actions chromedp.Tasks
 
 	if len(chrome.HeadersMap) > 0 {
@@ -438,10 +474,37 @@ func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, dom 
 	}
 
 	if doNavigate {
+
+		//var replaceAddEventListener string
+		replaceAddEventListener := `
+
+(function() {
+	console.log("hooking addEventListener");
+	window.log_events = [];
+    
+   var oldAddEventListener = EventTarget.prototype.addEventListener;  
+   EventTarget.prototype.addEventListener = function(eventName, eventHandler, useCapture) {
+	
+		if (eventName === 'message') {
+			window.log_events.push({type: "postMessageListener", name: eventName, function: eventHandler.toString()});
+		}  
+
+	   oldAddEventListener.call(this, eventName, eventHandler, useCapture);
+	}  
+
+})();  
+
+		`
+
 		actions = append(actions, chromedp.Navigate(url.String()))
+		actions = append(actions, chromedp.WaitReady("body"))
+		actions = append(actions, chromedp.EvaluateAsDevTools(replaceAddEventListener, nil))
+
 		if len(chrome.JsCode) > 0 {
 			actions = append(actions, chromedp.Evaluate(chrome.JsCode, nil))
 		}
+
+		chromedp.Evaluate("console.log('gowitness')", nil)
 		if chrome.Delay > 0 {
 			actions = append(actions, chromedp.Sleep(time.Duration(chrome.Delay)*time.Second))
 		}
@@ -452,7 +515,7 @@ func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, dom 
 	actions = append(actions, chromedp.Sleep(time.Second*3))
 
 	// grab the dom
-	actions = append(actions, chromedp.OuterHTML(":root", dom, chromedp.ByQueryAll))
+	actions = append(actions, chromedp.OuterHTML(":root", domBody, chromedp.ByQueryAll))
 
 	// should we print as pdf?
 	if chrome.AsPDF {
@@ -473,6 +536,37 @@ func buildTasks(chrome *Chrome, url *url.URL, doNavigate bool, buf *[]byte, dom 
 	} else {
 		actions = append(actions, chromedp.CaptureScreenshot(buf))
 	}
+
+	actions = append(actions, chromedp.EvaluateAsDevTools("console.log('events' + JSON.stringify(window.log_events))", nil))
+	actions = append(actions, chromedp.EvaluateAsDevTools("JSON.stringify(window.log_events)", log_events))
+	//actions = append(actions, chromedp.ActionFunc(func(ctx context.Context) error {
+	//
+	//	doc, err := dom.GetDocument().Do(ctx)
+	//	if err != nil {
+	//		fmt.Printf("error getting document: %s\n", err)
+	//		return err
+	//	}
+	//
+	//	id := dom.QuerySelector(doc.NodeID, "body").NodeID
+	//
+	//	o, err := dom.ResolveNode().WithNodeID(id).Do(ctx)
+	//	if err != nil {
+	//		fmt.Printf("error resolving node: %s\n", err)
+	//		return err
+	//	}
+	//
+	//	listeners, err := domdebugger.GetEventListeners(o.ObjectID).WithDepth(-1).WithPierce(true).Do(ctx)
+	//	if err != nil {
+	//		fmt.Printf("error getting listeners: %s\n", err)
+	//		return err
+	//	}
+	//
+	//	for _, listener := range listeners {
+	//		fmt.Printf("listener: %s\n", listener.Type)
+	//	}
+	//
+	//	return nil
+	//}))
 
 	return actions
 }

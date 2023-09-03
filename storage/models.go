@@ -8,29 +8,38 @@ import (
 	"gorm.io/gorm"
 )
 
+type Event struct {
+	gorm.Model `json:"-"`
+
+	Type     string `json:"type"`
+	Name     string `json:"name"`
+	Function string `json:"function"`
+}
+
 // URL contains information about a URL
 type URL struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	URL            string
-	FinalURL       string
-	ResponseCode   int
-	ResponseReason string
-	Proto          string
-	ContentLength  int64
-	Title          string
-	Filename       string
-	IsPDF          bool
-	PerceptionHash string
-	DOM            string
-	Screenshot     string
+	URL            string `json:"url"`
+	FinalURL       string `json:"final_url"`
+	ResponseCode   int    `json:"response_code"`
+	ResponseReason string `json:"response_reason"`
+	Proto          string `json:"proto"`
+	ContentLength  int64  `json:"content_length"`
+	Title          string `json:"title"`
+	Filename       string `json:"-"`
+	IsPDF          bool   `json:"-"`
+	PerceptionHash string `json:"-"`
+	DOM            string `json:"dom"`
+	Screenshot     string `json:"-"`
 
-	TLS TLS
+	TLS TLS `json:"tls"`
 
-	Headers      []Header
-	Technologies []Technologie
-	Console      []ConsoleLog
-	Network      []NetworkLog
+	Headers      []Header      `json:"headers"`
+	Technologies []Technologie `json:"technologies"`
+	Console      []ConsoleLog  `json:"console"`
+	Network      []NetworkLog  `json:"network"`
+	Events       []Event       `json:"events" gorm:"-"`
 }
 
 // AddHeader adds a new header to a URL
@@ -87,46 +96,46 @@ func (url *URL) MarshallJSON() ([]byte, error) {
 
 // Header contains an HTTP header
 type Header struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	URLID uint
+	URLID uint `json:"-"`
 
-	Key   string
-	Value string
+	Key   string `json:"key"`
+	Value string `json:"value"`
 }
 
 // Technologie contains a technologie
 type Technologie struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	URLID uint
+	URLID uint `json:"-"`
 
-	Value string
+	Value string `json:"value"`
 }
 
 // TLS contains TLS information for a URL
 type TLS struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	URLID uint
+	URLID uint `json:"-"`
 
-	Version         uint16
-	ServerName      string
-	TLSCertificates []TLSCertificate
+	Version         uint16           `json:"version"`
+	ServerName      string           `json:"server_name"`
+	TLSCertificates []TLSCertificate `json:"certificates"`
 }
 
 // TLSCertificate contain TLS Certificate information
 type TLSCertificate struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	TLSID uint
+	TLSID uint `json:"-"`
 
-	Raw                []byte
-	DNSNames           []TLSCertificateDNSName
-	SubjectCommonName  string
-	IssuerCommonName   string
-	SignatureAlgorithm string
-	PubkeyAlgorithm    string
+	Raw                []byte                  `json:"-"`
+	DNSNames           []TLSCertificateDNSName `json:"dns_names"`
+	SubjectCommonName  string                  `json:"subject_common_name"`
+	IssuerCommonName   string                  `json:"issuer_common_name"`
+	SignatureAlgorithm string                  `json:"signature_algorithm"`
+	PubkeyAlgorithm    string                  `json:"pubkey_algorithm"`
 }
 
 // AddDNSName adds a new DNS Name to a Certificate
@@ -136,21 +145,21 @@ func (tlsCert *TLSCertificate) AddDNSName(name string) {
 
 // TLSCertificateDNSName has DNS names for a TLS certificate
 type TLSCertificateDNSName struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	TLSCertificateID uint
-	Name             string
+	TLSCertificateID uint   `json:"-"`
+	Name             string `json:"name"`
 }
 
 // ConsoleLog contains the console log, and exceptions emitted
 type ConsoleLog struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	URLID uint
+	URLID uint `json:"-"`
 
-	Time  time.Time
-	Type  string
-	Value string
+	Time  time.Time `json:"time"`
+	Type  string    `json:"type"`
+	Value string    `json:"value"`
 }
 
 // RequestType are network log types
@@ -163,16 +172,16 @@ const (
 
 // NetworkLog contains Chrome networks events that were emitted
 type NetworkLog struct {
-	gorm.Model
+	gorm.Model `json:"-"`
 
-	URLID uint
+	URLID uint `json:"-"`
 
-	RequestID   string
-	RequestType RequestType
-	StatusCode  int64
-	URL         string
-	FinalURL    string
-	IP          string
-	Time        time.Time
-	Error       string
+	RequestID   string      `json:"request_id"`
+	RequestType RequestType `json:"request_type"`
+	StatusCode  int64       `json:"status_code"`
+	URL         string      `json:"url"`
+	FinalURL    string      `json:"final_url"`
+	IP          string      `json:"ip"`
+	Time        time.Time   `json:"time"`
+	Error       string      `json:"error"`
 }

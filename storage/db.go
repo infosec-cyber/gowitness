@@ -2,6 +2,8 @@ package storage
 
 import (
 	"errors"
+	"gorm.io/gorm/clause"
+	"gorm.io/gorm/schema"
 	"net/url"
 	"strings"
 
@@ -18,6 +20,7 @@ type Db struct {
 
 	// cli flags
 	Disabled bool
+	S3       bool
 	Debug    bool
 }
 
@@ -50,6 +53,40 @@ func parseDBLocation(dbLocation string) (*url.URL, string, error) {
 	return location, dbLocation, nil
 }
 
+type S3Dialector struct {
+}
+
+func (s S3Dialector) Name() string {
+	return "S3"
+}
+
+func (s S3Dialector) Initialize(db *gorm.DB) error {
+	return nil
+}
+
+func (s S3Dialector) Migrator(db *gorm.DB) gorm.Migrator {
+	return nil
+}
+
+func (s S3Dialector) DataTypeOf(field *schema.Field) string {
+	return ""
+}
+
+func (s S3Dialector) DefaultValueOf(field *schema.Field) clause.Expression {
+	return clause.Expr{}
+}
+
+func (s S3Dialector) BindVarTo(writer clause.Writer, stmt *gorm.Statement, v interface{}) {
+	print(v)
+}
+
+func (s S3Dialector) QuoteTo(writer clause.Writer, s2 string) {
+}
+
+func (s S3Dialector) Explain(sql string, vars ...interface{}) string {
+	return ""
+}
+
 // Get gets a db handle
 func (db *Db) Get() (*gorm.DB, error) {
 
@@ -58,6 +95,12 @@ func (db *Db) Get() (*gorm.DB, error) {
 	}
 
 	var config = &gorm.Config{}
+
+	if db.S3 {
+		open, err := gorm.Open(S3Dialector{}, &gorm.Config{})
+
+		return open, err
+	}
 	if db.Debug {
 		config.Logger = logger.Default.LogMode(logger.Info)
 	} else {
